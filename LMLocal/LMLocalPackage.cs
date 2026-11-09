@@ -34,7 +34,7 @@ namespace LMLocal
     [Guid(PackageGuidString)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
 #pragma warning disable VSSDK003 // tool window is created on-demand synchronously; async construction not required
-    [ProvideToolWindow(typeof(MainWindow))]
+    [ProvideToolWindow(typeof(MainWindow), Style = VsDockStyle.Tabbed, Window = "3ae79031-e1bc-11d0-8f78-00a0c9110057")]
 #pragma warning restore VSSDK003
     [ProvideBindingPath()]
     [ProvideAutoLoad(VSConstants.UICONTEXT.NoSolution_string, PackageAutoLoadFlags.BackgroundLoad)]
