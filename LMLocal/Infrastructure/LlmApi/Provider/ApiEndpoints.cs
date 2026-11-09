@@ -21,6 +21,11 @@ namespace LMLocal.Infrastructure.LlmApi.Provider
         public const string ChatCompletions = "/v1/chat/completions";
 
         /// <summary>
+        /// OpenAI Responses API endpoint.
+        /// </summary>
+        public const string Responses = "/v1/responses";
+
+        /// <summary>
         /// Ollama - specific endpoint for listing running models.
         /// </summary>
         public const string OllamaRunningModels = "/api/ps";
