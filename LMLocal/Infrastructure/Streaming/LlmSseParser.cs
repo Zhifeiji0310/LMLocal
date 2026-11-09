@@ -62,6 +62,12 @@ namespace LMLocal.Infrastructure.Streaming
                 return chunks;
             }
 
+            var responseEventType = json["type"]?.ToString();
+            if (!string.IsNullOrEmpty(responseEventType))
+            {
+                return ExtractResponsesDeltas(json, responseEventType);
+            }
+
 
             var contentChunks = ExtractStreamContents(json);
             if (contentChunks.Count > 0)
@@ -99,6 +105,91 @@ namespace LMLocal.Infrastructure.Streaming
                     }
                     return chunks;
                 }
+            }
+
+            return chunks;
+        }
+
+        private List<StreamChunk> ExtractResponsesDeltas(JObject json, string eventType)
+        {
+            var chunks = new List<StreamChunk>();
+            switch (eventType)
+            {
+                case "response.output_text.delta":
+                    if (!string.IsNullOrEmpty(json["delta"]?.ToString()))
+                        chunks.Add(new TextStreamChunk(json["delta"].ToString(), ChunkKind.Content));
+                    break;
+
+                case "response.reasoning_text.delta":
+                case "response.reasoning_summary_text.delta":
+                    if (!string.IsNullOrEmpty(json["delta"]?.ToString()))
+                        chunks.Add(new TextStreamChunk(json["delta"].ToString(), ChunkKind.Reasoning));
+                    break;
+
+                case "response.output_item.added":
+                case "response.output_item.done":
+                    var item = json["item"] as JObject;
+                    if (item?["type"]?.ToString() == "function_call")
+                    {
+                        var index = json["output_index"]?.Value<int?>() ?? 0;
+                        var callId = item["call_id"]?.ToString() ?? item["id"]?.ToString();
+                        var name = item["name"]?.ToString();
+                        // The added event contains metadata. The done event can contain the full
+                        // arguments, but argument deltas have already been accumulated by then.
+                        var initialArguments = eventType == "response.output_item.added"
+                            ? item["arguments"]?.ToString()
+                            : null;
+                        chunks.Add(new ToolCallMetadataChunk(index, callId, name, initialArguments));
+                    }
+                    break;
+
+                case "response.function_call_arguments.delta":
+                    if (!string.IsNullOrEmpty(json["delta"]?.ToString()))
+                        chunks.Add(new TextStreamChunk(
+                            json["delta"].ToString(),
+                            ChunkKind.ToolCallArguments,
+                            json["output_index"]?.Value<int?>() ?? 0));
+                    break;
+
+                case "response.completed":
+                    var response = json["response"] as JObject;
+                    var usage = response?["usage"] as JObject;
+                    var inputTokens = usage?["input_tokens"]?.Value<int?>();
+                    var outputTokens = usage?["output_tokens"]?.Value<int?>();
+                    var reasoningTokens = usage?["output_tokens_details"]?["reasoning_tokens"]?.Value<int?>();
+                    var cachedTokens = usage?["input_tokens_details"]?["cached_tokens"]?.Value<int?>();
+                    var hasToolCalls = response?["output"] is JArray output &&
+                        output.OfType<JObject>().Any(x => x["type"]?.ToString() == "function_call");
+                    chunks.Add(new CompletionStreamChunk(
+                        finishReason: hasToolCalls ? "tool_calls" : "stop",
+                        totalTokens: inputTokens.HasValue || outputTokens.HasValue
+                            ? (inputTokens ?? 0) + (outputTokens ?? 0)
+                            : (int?)null,
+                        promptTokens: inputTokens,
+                        completionTokens: outputTokens,
+                        reasoningTokens: reasoningTokens,
+                        cachedTokens: cachedTokens));
+                    break;
+
+                case "response.incomplete":
+                    chunks.Add(new CompletionStreamChunk(finishReason: "length"));
+                    break;
+
+                case "response.failed":
+                    var failedError = json["response"]?["error"] ?? json["error"];
+                    chunks.Add(new ErrorStreamChunk(
+                        failedError?["message"]?.ToString() ?? "The Responses API request failed.",
+                        failedError?["type"]?.ToString(),
+                        failedError?["code"]?.ToString()));
+                    break;
+
+                case "error":
+                    var error = json["error"] as JObject ?? json;
+                    chunks.Add(new ErrorStreamChunk(
+                        error["message"]?.ToString() ?? "The Responses API stream returned an error.",
+                        error["type"]?.ToString(),
+                        error["code"]?.ToString()));
+                    break;
             }
 
             return chunks;
