@@ -136,6 +136,7 @@
     <Compile Include="Infrastructure\PathHelperTests.cs" />
     <Compile Include="Infrastructure\PathResolverTests.cs" />
     <Compile Include="Infrastructure\ProviderErrorFixtureTests.cs" />
+    <Compile Include="Infrastructure\ResponsesApiConverterTests.cs" />
     <Compile Include="Infrastructure\ProviderResolverTests.cs" />
     <Compile Include="Infrastructure\ProvidersConfigManagerTests.cs" />
     <Compile Include="Infrastructure\RecentModelsManagerTests.cs" />
