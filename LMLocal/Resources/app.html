@@ -312,6 +312,16 @@
                     </div>
                 </div>
                 <div class="settings-group">
+                    <label for="settings-api-protocol" class="settings-label">Chat API protocol</label>
+                    <span class="settings-description">
+                        Select the chat endpoint protocol supported by your provider. Existing providers use Chat Completions by default. Choose Responses only when your API gateway supports the OpenAI Responses API.
+                    </span>
+                    <select id="settings-api-protocol" name="ApiProtocol" data-setting="ApiProtocol" class="settings-select">
+                        <option value="chat_completions">Chat Completions (/v1/chat/completions)</option>
+                        <option value="responses">Responses (/v1/responses)</option>
+                    </select>
+                </div>
+                <div class="settings-group">
                     <label for="settings-stream-timeout" class="settings-label">Streaming timeout (seconds)</label>
                     <span class="settings-description">
                         How long to wait for the next word or token after the first one arrives. Increase for slower local models. 0 = never timeout.
