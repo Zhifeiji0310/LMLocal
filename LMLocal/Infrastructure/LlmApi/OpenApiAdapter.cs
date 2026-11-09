@@ -12,6 +12,7 @@ using LMLocal.Core.Models;
 using LMLocal.Infrastructure.Api;
 using LMLocal.Infrastructure.HttpWrapper;
 using LMLocal.Infrastructure.LlmApi.Provider;
+using LMLocal.Infrastructure.LlmApi.Converter;
 using LMLocal.Infrastructure.LlmApi.Requests;
 using LMLocal.Infrastructure.LlmApi.Responses;
 using LMLocal.Infrastructure.Tooling;
@@ -291,7 +292,7 @@ namespace LMLocal.Infrastructure.LlmApi
             var baseUrl = ResolveBaseUrl(provider?.BaseUrl);
             var apiKey = ResolveApiKey(provider?.ApiKey);
             var providerType = ResolveProviderType(provider?.ProviderType);
-            var endpoint = ProviderResolver.GetChatCompletionsEndpoint(providerType);
+            var endpoint = GetChatEndpoint(providerType);
 
             return SendChatCoreAsync(openAiRequest, baseUrl, endpoint, apiKey, UseResponsesApi, cancellationToken);
         }
