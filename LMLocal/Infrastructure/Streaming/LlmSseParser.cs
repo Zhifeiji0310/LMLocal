@@ -117,6 +117,7 @@ namespace LMLocal.Infrastructure.Streaming
             switch (eventType)
             {
                 case "response.output_text.delta":
+                case "response.refusal.delta":
                     if (!string.IsNullOrEmpty(json["delta"]?.ToString()))
                         chunks.Add(new TextStreamChunk(json["delta"].ToString(), ChunkKind.Content));
                     break;
