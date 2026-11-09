@@ -134,12 +134,12 @@ namespace LMLocal.Infrastructure.LlmApi.Converter
                     {
                         toolCalls.Add(new JObject
                         {
-                            ["id"] = item["call_id"] ?? item["id"],
+                            ["id"] = (item["call_id"] ?? item["id"])?.DeepClone(),
                             ["type"] = "function",
                             ["function"] = new JObject
                             {
-                                ["name"] = item["name"],
-                                ["arguments"] = item["arguments"] ?? "{}"
+                                ["name"] = item["name"]?.DeepClone(),
+                                ["arguments"] = item["arguments"]?.DeepClone() ?? new JValue("{}")
                             }
                         });
                     }
@@ -159,10 +159,10 @@ namespace LMLocal.Infrastructure.LlmApi.Converter
 
             var completion = new JObject
             {
-                ["id"] = response["id"],
+                ["id"] = response["id"]?.DeepClone(),
                 ["object"] = "chat.completion",
                 ["created"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                ["model"] = response["model"],
+                ["model"] = response["model"]?.DeepClone(),
                 ["choices"] = new JArray(new JObject
                 {
                     ["index"] = 0,
@@ -181,10 +181,10 @@ namespace LMLocal.Infrastructure.LlmApi.Converter
 
                 var details = usage["output_tokens_details"] as JObject;
                 if (details?["reasoning_tokens"] != null)
-                    mappedUsage["completion_tokens_details"] = new JObject { ["reasoning_tokens"] = details["reasoning_tokens"] };
+                    mappedUsage["completion_tokens_details"] = new JObject { ["reasoning_tokens"] = details["reasoning_tokens"].DeepClone() };
                 var inputDetails = usage["input_tokens_details"] as JObject;
                 if (inputDetails?["cached_tokens"] != null)
-                    mappedUsage["prompt_tokens_details"] = new JObject { ["cached_tokens"] = inputDetails["cached_tokens"] };
+                    mappedUsage["prompt_tokens_details"] = new JObject { ["cached_tokens"] = inputDetails["cached_tokens"].DeepClone() };
                 completion["usage"] = mappedUsage;
             }
 
@@ -207,7 +207,7 @@ namespace LMLocal.Infrastructure.LlmApi.Converter
                 }
                 else if (part is JObject textPart && textPart["type"]?.ToString() == "text")
                 {
-                    converted.Add(new JObject { ["type"] = "input_text", ["text"] = textPart["text"] });
+                    converted.Add(new JObject { ["type"] = "input_text", ["text"] = textPart["text"]?.DeepClone() });
                 }
                 else
                 {
