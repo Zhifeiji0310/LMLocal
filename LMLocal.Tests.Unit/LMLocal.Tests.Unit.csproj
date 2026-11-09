@@ -233,6 +233,7 @@
     <Compile Include="Internal\JsonExtensionsTests.cs" />
     <Compile Include="Internal\LlmSseParserExtendedTests.cs" />
     <Compile Include="Internal\LlmSseParserTests.cs" />
+    <Compile Include="Internal\ResponsesApiSseParserTests.cs" />
     <Compile Include="Internal\PrunedContentGuardTests.cs" />
     <Compile Include="Internal\SessionManagerConcurrencyTests.cs" />
     <Compile Include="Internal\SessionManagerTests.cs" />
