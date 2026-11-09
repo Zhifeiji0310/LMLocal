@@ -146,6 +146,9 @@ namespace LMLocal.Infrastructure.LlmApi.Converter
                 }
             }
 
+            if (text.Length == 0 && response["output_text"] != null)
+                text.Append(response["output_text"].ToString());
+
             var usage = response["usage"] as JObject;
             var promptTokens = usage?["input_tokens"]?.Value<int?>();
             var completionTokens = usage?["output_tokens"]?.Value<int?>();
@@ -161,13 +164,13 @@ namespace LMLocal.Infrastructure.LlmApi.Converter
             {
                 ["id"] = response["id"]?.DeepClone(),
                 ["object"] = "chat.completion",
-                ["created"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                ["created"] = response["created_at"]?.Value<long?>() ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 ["model"] = response["model"]?.DeepClone(),
                 ["choices"] = new JArray(new JObject
                 {
                     ["index"] = 0,
                     ["message"] = message,
-                    ["finish_reason"] = toolCalls.Count > 0 ? "tool_calls" : "stop"
+                    ["finish_reason"] = toolCalls.Count > 0 ? "tool_calls" : (response["status"]?.ToString() == "incomplete" ? "length" : "stop")
                 })
             };
 
