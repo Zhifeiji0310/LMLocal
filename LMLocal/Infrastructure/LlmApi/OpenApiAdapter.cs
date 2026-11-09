@@ -84,10 +84,20 @@ namespace LMLocal.Infrastructure.LlmApi
             return DefaultBaseUrl;
         }
 
+        private bool UseResponsesApi =>
+            string.Equals(_settingsManager.Current?.ApiProtocol, "responses", StringComparison.OrdinalIgnoreCase);
+
         private string GetChatCompletionsEndpoint()
         {
             var provider = ProviderResolver.ResolveProvider(_settingsManager.Current?.Provider);
-            return ProviderResolver.GetChatCompletionsEndpoint(provider);
+            return GetChatEndpoint(provider);
+        }
+
+        private string GetChatEndpoint(ModelProvider provider)
+        {
+            return UseResponsesApi
+                ? ApiEndpoints.Responses
+                : ProviderResolver.GetChatCompletionsEndpoint(provider);
         }
 
         public async Task<string> ListModelsRawAsync(string endpoint, string baseUrl, string apiKey, CancellationToken cancellationToken, string certificatePath = null)
@@ -174,6 +184,7 @@ namespace LMLocal.Infrastructure.LlmApi
                 GetBaseUrl(),
                 GetChatCompletionsEndpoint(),
                 _settingsManager.Current?.ApiKey,
+                UseResponsesApi,
                 cancellationToken).ConfigureAwait(false);
         }
 
@@ -192,9 +203,9 @@ namespace LMLocal.Infrastructure.LlmApi
             var baseUrl = ResolveBaseUrl(provider?.BaseUrl);
             var apiKey = ResolveApiKey(provider?.ApiKey);
             var providerType = ResolveProviderType(provider?.ProviderType);
-            var endpoint = ProviderResolver.GetChatCompletionsEndpoint(providerType);
+            var endpoint = GetChatEndpoint(providerType);
 
-            return await SendChatStreamingCoreAsync(openAiRequest, baseUrl, endpoint, apiKey, cancellationToken).ConfigureAwait(false);
+            return await SendChatStreamingCoreAsync(openAiRequest, baseUrl, endpoint, apiKey, UseResponsesApi, cancellationToken).ConfigureAwait(false);
         }
 
         private async Task<StreamingResponse> SendChatStreamingCoreAsync(
@@ -202,9 +213,13 @@ namespace LMLocal.Infrastructure.LlmApi
             string baseUrl,
             string endpoint,
             string apiKey,
+            bool useResponsesApi,
             CancellationToken cancellationToken)
         {
-            var content = new StringContent(openAiRequest.ToJson(), Encoding.UTF8, "application/json");
+            var requestJson = useResponsesApi
+                ? ResponsesApiConverter.ToRequestJson(openAiRequest)
+                : openAiRequest.ToJson();
+            var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
             HttpRequestMessage request = null;
             HttpResponseMessage response = null;
             bool success = false;
@@ -257,6 +272,7 @@ namespace LMLocal.Infrastructure.LlmApi
                 GetBaseUrl(),
                 GetChatCompletionsEndpoint(),
                 _settingsManager.Current?.ApiKey,
+                UseResponsesApi,
                 cancellationToken);
         }
 
@@ -277,7 +293,7 @@ namespace LMLocal.Infrastructure.LlmApi
             var providerType = ResolveProviderType(provider?.ProviderType);
             var endpoint = ProviderResolver.GetChatCompletionsEndpoint(providerType);
 
-            return SendChatCoreAsync(openAiRequest, baseUrl, endpoint, apiKey, cancellationToken);
+            return SendChatCoreAsync(openAiRequest, baseUrl, endpoint, apiKey, UseResponsesApi, cancellationToken);
         }
 
         private async Task<SendChatResponse> SendChatCoreAsync(
@@ -285,9 +301,13 @@ namespace LMLocal.Infrastructure.LlmApi
             string baseUrl,
             string endpoint,
             string apiKey,
+            bool useResponsesApi,
             CancellationToken cancellationToken)
         {
-            using (var content = new StringContent(openAiRequest.ToJson(), Encoding.UTF8, "application/json"))
+            var requestJson = useResponsesApi
+                ? ResponsesApiConverter.ToRequestJson(openAiRequest)
+                : openAiRequest.ToJson();
+            using (var content = new StringContent(requestJson, Encoding.UTF8, "application/json"))
             using (var request = new HttpRequestMessage(HttpMethod.Post, baseUrl + endpoint) { Content = content })
             {
                 if (!string.IsNullOrEmpty(_settingsManager.UserAgent))
@@ -308,7 +328,10 @@ namespace LMLocal.Infrastructure.LlmApi
 
                     try
                     {
-                        return json.FromJson<SendChatResponse>();
+                        var normalizedJson = useResponsesApi
+                            ? ResponsesApiConverter.ToChatCompletionJson(json)
+                            : json;
+                        return normalizedJson.FromJson<SendChatResponse>();
                     }
                     catch (JsonException ex)
                     {
