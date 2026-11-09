@@ -207,6 +207,7 @@
     <Compile Include="Infrastructure\LlmApi\Responses\TogetherAiModelInfo.cs" />
     <Compile Include="Infrastructure\LlmApi\Responses\UnifiedListModelsResponse.cs" />
     <Compile Include="Infrastructure\LlmApi\Converter\ToolDefinitionConverter.cs" />
+    <Compile Include="Infrastructure\LlmApi\Converter\ResponsesApiConverter.cs" />
     <Compile Include="Infrastructure\ModelsConfig\ModelsConfigManager.cs" />
     <Compile Include="Infrastructure\Persistence\ChatLogSerializer.cs" />
     <Compile Include="Infrastructure\Providers\ProvidersConfigManager.cs" />
