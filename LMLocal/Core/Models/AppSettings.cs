@@ -118,6 +118,12 @@ namespace LMLocal.Core.Models
         /// </summary>
         public int? ProviderId { get; set; }
 
+        /// <summary>
+        /// Chat API protocol: "chat_completions" (default) or "responses".
+        /// Applies to chat requests only; FIM completions keep their existing endpoint.
+        /// </summary>
+        public string ApiProtocol { get; set; } = "chat_completions";
+
         public bool Equals(AppSettings other)
         {
             if (ReferenceEquals(this, other)) return true;
@@ -141,6 +147,7 @@ namespace LMLocal.Core.Models
                 && string.Equals(ApiKey, other.ApiKey, StringComparison.Ordinal)
                 && string.Equals(Provider, other.Provider, StringComparison.OrdinalIgnoreCase)
                 && ProviderId == other.ProviderId
+                && string.Equals(ApiProtocol, other.ApiProtocol, StringComparison.OrdinalIgnoreCase)
                 && string.Equals(TrustedServerCertificatePath, other.TrustedServerCertificatePath, StringComparison.OrdinalIgnoreCase)
                 && string.Equals(KnowledgeBasePaths, other.KnowledgeBasePaths, StringComparison.OrdinalIgnoreCase);
         }
@@ -171,6 +178,7 @@ namespace LMLocal.Core.Models
                 hash = hash * 23 + (ApiKey != null ? StringComparer.Ordinal.GetHashCode(ApiKey) : 0);
                 hash = hash * 23 + (Provider != null ? StringComparer.OrdinalIgnoreCase.GetHashCode(Provider) : 0);
                 hash = hash * 23 + ProviderId.GetHashCode();
+                hash = hash * 23 + (ApiProtocol != null ? StringComparer.OrdinalIgnoreCase.GetHashCode(ApiProtocol) : 0);
                 hash = hash * 23 + (TrustedServerCertificatePath != null ? StringComparer.OrdinalIgnoreCase.GetHashCode(TrustedServerCertificatePath) : 0);
                 hash = hash * 23 + (KnowledgeBasePaths != null ? StringComparer.OrdinalIgnoreCase.GetHashCode(KnowledgeBasePaths) : 0);
                 return hash;
