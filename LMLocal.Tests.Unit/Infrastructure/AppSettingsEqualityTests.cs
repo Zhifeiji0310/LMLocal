@@ -11,6 +11,23 @@ namespace LMLocal.Tests.Unit.Infrastructure
     public class AppSettingsEqualityTests
     {
         [Test]
+        public void AppSettings_DefaultsToChatCompletionsProtocol()
+        {
+            var settings = new AppSettings();
+            Assert.That(settings.ApiProtocol, Is.EqualTo("chat_completions"));
+        }
+
+        [Test]
+        public void AppSettings_Equals_TracksApiProtocol()
+        {
+            var chat = new AppSettings { ApiProtocol = "chat_completions" };
+            var responses = new AppSettings { ApiProtocol = "responses" };
+
+            Assert.That(chat.Equals(responses), Is.False);
+            Assert.That(chat.GetHashCode(), Is.Not.EqualTo(responses.GetHashCode()));
+        }
+
+        [Test]
         public void AppSettings_Equals_IsCaseInsensitiveForLmStudioBaseUrl()
         {
             var a = new AppSettings { LmStudioBaseUrl = "HTTP://LOCALHOST:1234" };
