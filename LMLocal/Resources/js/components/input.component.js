@@ -35,6 +35,7 @@ class InputComponent {
         this._resizeState = { active: false, startY: 0, startHeight: 0 };
         this._resizerBound = { down: null, move: null, up: null };
         this._images = [];      // { id, name, mimeType, dataUrl } for attached images
+        this._documents = [];   // { id, name, mimeType, data } for Office/PDF documents
         this._inputSession = this._createInputSession();
     }
 
@@ -45,6 +46,7 @@ class InputComponent {
         return {
             pendingImages: new Set(),
             pendingFiles: new Set(),
+            pendingDocuments: new Set(),
         };
     }
 
@@ -83,7 +85,7 @@ class InputComponent {
 
     _syncExpandedState = () => {
         const hasText = this.elements.userInput?.value?.length > 0;
-        const hasImages = this._images.length > 0;
+        const hasImages = this._images.length > 0 || this._documents.length > 0;
         const isResized = this._isResized();
         if (hasText || hasImages || isResized) {
             this.elements.inputWrapper?.classList.add('expanded');
@@ -194,14 +196,14 @@ class InputComponent {
     }
 
     _hasPendingFiles() {
-        return this._inputSession.pendingFiles.size > 0;
+        return this._inputSession.pendingFiles.size > 0 || this._inputSession.pendingDocuments.size > 0;
     }
 
     _renderAttachments() {
         const container = this.elements.attachmentsPreview;
         if (!container) return;
         container.innerHTML = '';
-        if (this._images.length === 0) {
+        if (this._images.length === 0 && this._documents.length === 0) {
             container.classList.add('hidden');
             return;
         }
@@ -227,6 +229,22 @@ class InputComponent {
             item.appendChild(btn);
             container.appendChild(item);
         }
+        for (const doc of this._documents) {
+            const item = document.createElement('div');
+            item.className = 'attachment-item document-attachment';
+            item.setAttribute('data-document-id', doc.id);
+            const name = document.createElement('span');
+            name.className = 'attachment-name';
+            name.textContent = '📄 ' + doc.name;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-remove-attachment';
+            btn.title = 'Remove';
+            btn.innerHTML = '&times;';
+            item.appendChild(name);
+            item.appendChild(btn);
+            container.appendChild(item);
+        }
     }
 
     _handleAttachmentClick = (e) => {
@@ -236,6 +254,7 @@ class InputComponent {
             if (!item) return;
             const id = item.getAttribute('data-image-id');
             this._images = this._images.filter(img => img.id !== id);
+            this._documents = this._documents.filter(doc => doc.id !== id);
             this._renderAttachments();
             this._syncExpandedState();
             return;
@@ -262,7 +281,8 @@ class InputComponent {
             const value = this.elements.userInput?.value;
             const hasActiveContent = this.elements.contextToggleBtn.classList.contains('active');
             const images = this._images.map(img => img.dataUrl);
-            if (await this.onEnter.emit(value, hasActiveContent, images)) {
+            const documents = this._documents.map(({ name, mimeType, data }) => ({ name, mimeType, data }));
+            if (await this.onEnter.emit(value, hasActiveContent, images, documents)) {
                 this.clearInput();
             }
         }
@@ -281,7 +301,8 @@ class InputComponent {
         const value = this.elements.userInput?.value;
         const hasActiveContent = this.elements.contextToggleBtn.classList.contains('active');
         const images = this._images.map(img => img.dataUrl);
-        if (await this.onClick.emit(value, hasActiveContent, images)) {
+        const documents = this._documents.map(({ name, mimeType, data }) => ({ name, mimeType, data }));
+        if (await this.onClick.emit(value, hasActiveContent, images, documents)) {
             this.clearInput();
         }
     };
@@ -381,12 +402,14 @@ class InputComponent {
         if (dt.files && dt.files.length > 0) {
             const files = Array.from(dt.files);
             const imageFiles = files.filter(f => Config.IMAGE_ALLOWED_TYPES.includes(f.type));
-            const textFiles = files.filter(f => !Config.IMAGE_ALLOWED_TYPES.includes(f.type));
+            const documentFiles = files.filter(f => Config.DOCUMENT_ALLOWED_EXTENSIONS.includes('.' + f.name.split('.').pop().toLowerCase()));
+            const remainingFiles = files.filter(f => !Config.IMAGE_ALLOWED_TYPES.includes(f.type) && !documentFiles.includes(f));
 
             if (imageFiles.length > 0) this._acceptImageFiles(imageFiles);
-            if (textFiles.length > 0) await this._appendFilesAsMarkdown(textFiles);
+            if (documentFiles.length > 0) await this._appendDocumentFiles(documentFiles);
+            if (remainingFiles.length > 0) await this._appendFilesAsMarkdown(remainingFiles);
 
-            if (imageFiles.length > 0 || textFiles.length > 0) {
+            if (imageFiles.length > 0 || documentFiles.length > 0 || remainingFiles.length > 0) {
                 this._focusUserInput();
             }
             return;
@@ -414,15 +437,61 @@ class InputComponent {
         const files = input && input.files ? Array.from(input.files) : [];
         if (files.length > 0) {
             const imageFiles = files.filter(f => Config.IMAGE_ALLOWED_TYPES.includes(f.type));
-            const textFiles = files.filter(f => !Config.IMAGE_ALLOWED_TYPES.includes(f.type));
+            const documentFiles = files.filter(f => Config.DOCUMENT_ALLOWED_EXTENSIONS.includes('.' + f.name.split('.').pop().toLowerCase()));
+            const remainingFiles = files.filter(f => !Config.IMAGE_ALLOWED_TYPES.includes(f.type) && !documentFiles.includes(f));
 
             if (imageFiles.length > 0) this._acceptImageFiles(imageFiles);
-            if (textFiles.length > 0) await this._appendFilesAsMarkdown(textFiles);
+            if (documentFiles.length > 0) await this._appendDocumentFiles(documentFiles);
+            if (remainingFiles.length > 0) await this._appendFilesAsMarkdown(remainingFiles);
         }
         if (input) {
             input.value = '';
         }
         this._focusUserInput();
+    };
+
+    _appendDocumentFiles = async (files) => {
+        const session = this._inputSession;
+        const id = Symbol();
+        session.pendingDocuments.add(id);
+        try {
+            for (const file of files.slice(0, Config.DOCUMENT_MAX_COUNT)) {
+                if (this._documents.length >= Config.DOCUMENT_MAX_COUNT) {
+                    toast.show('Maximum 5 documents allowed', 'error');
+                    break;
+                }
+                if (file.size > Config.DOCUMENT_MAX_FILE_SIZE_BYTES) {
+                    toast.show(`${UIText.DOCUMENT_TOO_LARGE} (${file.name})`, 'error');
+                    continue;
+                }
+                try {
+                    const dataUrl = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = () => reject(reader.error || new Error('File read failed'));
+                        reader.readAsDataURL(file);
+                    });
+                    if (session !== this._inputSession) return;
+                    const comma = dataUrl.indexOf(',');
+                    if (comma < 0) throw new Error('Invalid file data');
+                    this._documents.push({
+                        id: Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+                        name: file.name,
+                        mimeType: file.type || 'application/octet-stream',
+                        data: dataUrl.substring(comma + 1)
+                    });
+                } catch (error) {
+                    console.error('[DocumentAttach] Failed to read:', file.name, error);
+                    toast.show(`Failed to read ${file.name}`, 'error');
+                }
+            }
+            if (session === this._inputSession) {
+                this._renderAttachments();
+                this._syncExpandedState();
+            }
+        } finally {
+            session.pendingDocuments.delete(id);
+        }
     };
 
     _appendFilesAsMarkdown = async (files) => {
@@ -629,6 +698,7 @@ class InputComponent {
 
         this._inputSession = this._createInputSession();
         this._images = [];
+        this._documents = [];
         this._renderAttachments();
     }
 
