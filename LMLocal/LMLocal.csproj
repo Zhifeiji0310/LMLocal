@@ -541,6 +541,8 @@
     <Compile Include="Application\Chat\ChatHistoryManager.cs" />
     <Compile Include="Core\Models\ChatMessage.cs" />
     <Compile Include="Infrastructure\WebView\Models\ExecutePromptRequest.cs" />
+    <Compile Include="Infrastructure\WebView\Models\DocumentAttachmentRequest.cs" />
+    <Compile Include="Infrastructure\Documents\DocumentTextExtractor.cs" />
     <Compile Include="Core\Models\GenerateStreamContext.cs" />
     <Compile Include="Core\Models\StreamChunk.cs" />
     <Compile Include="Application\Chat\HistoryCompactor.cs" />
