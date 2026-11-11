@@ -144,7 +144,7 @@ namespace LMLocal.Infrastructure.WebView
                         try
                         {
                             var extracted = DocumentTextExtractor.Extract(document.Name, document.Data);
-                            documentText.Add("## Attached file: " + document.Name + "\\n" + (extracted ?? string.Empty));
+                            documentText.Add("## Attached file: " + document.Name + "\n" + (extracted ?? string.Empty));
                         }
                         catch (Exception documentError)
                         {
@@ -156,7 +156,7 @@ namespace LMLocal.Infrastructure.WebView
 
                 var prompt = request.Prompt ?? string.Empty;
                 if (documentText.Count > 0)
-                    prompt += "\\n\\n" + string.Join("\\n\\n", documentText);
+                    prompt += "\n\n" + string.Join("\\n\\n", documentText);
 
                 var context = new GenerateStreamContext
                 {
