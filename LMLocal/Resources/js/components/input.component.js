@@ -252,7 +252,7 @@ class InputComponent {
         if (btn) {
             const item = btn.closest('.attachment-item');
             if (!item) return;
-            const id = item.getAttribute('data-image-id');
+            const id = item.getAttribute('data-image-id') || item.getAttribute('data-document-id');
             this._images = this._images.filter(img => img.id !== id);
             this._documents = this._documents.filter(doc => doc.id !== id);
             this._renderAttachments();
