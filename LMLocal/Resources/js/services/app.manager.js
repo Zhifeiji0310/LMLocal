@@ -66,14 +66,17 @@ class AppManager {
         await appDataService.applyActiveModelInstruction();
     }
 
-    async performSendMessage(text, hasContent, images = []) {
+    async performSendMessage(text, hasContent, images = [], documents = []) {
         const cleanText = (text || '').trim();
         const hasImages = images && images.length > 0;
-        if ((!cleanText && !hasImages) || !appSelectors.canSend(appStore.getState().status)) return false;
+        const hasDocuments = documents && documents.length > 0;
+        if ((!cleanText && !hasImages && !hasDocuments) || !appSelectors.canSend(appStore.getState().status)) return false;
 
-        await this.onUserMessagePending.emit(cleanText, hasImages ? images.slice() : null);
+        const documentNames = hasDocuments ? documents.map(d => d.name).join(', ') : '';
+        const prompt = documentNames ? (cleanText ? cleanText + '\\n\\n' : '') + 'Attached documents: ' + documentNames : cleanText;
+        await this.onUserMessagePending.emit(prompt, hasImages ? images.slice() : null);
 
-        this._startPromptRound(this._buildPromptRequest(cleanText, hasContent, hasImages ? images : null));
+        this._startPromptRound(this._buildPromptRequest(prompt, hasContent, hasImages ? images : null, hasDocuments ? documents : null));
         return true;
     }
 
@@ -95,7 +98,7 @@ class AppManager {
     /**
      * Builds the bridge request payload shared by a new prompt and a continuation.
      */
-    _buildPromptRequest(cleanText, includeContent, images) {
+    _buildPromptRequest(cleanText, includeContent, images, documents) {
         const request = {
             prompt: cleanText,
             includeContent: includeContent,
@@ -103,6 +106,7 @@ class AppManager {
         };
 
         if (images && images.length > 0) request.images = images;
+        if (documents && documents.length > 0) request.documents = documents;
 
         const instructionsState = instructionsStore.getState();
         const selectedTabId = instructionsState.selectedTabId;
