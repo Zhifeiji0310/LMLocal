@@ -12,6 +12,7 @@ using LMLocal.Infrastructure.Tooling.BuiltInVs.Implementations;
 using LMLocal.Infrastructure.Tooling.BuiltInVs.Snapshot;
 using LMLocal.Infrastructure.VisualStudio;
 using LMLocal.Infrastructure.WebView.Messaging;
+using LMLocal.Infrastructure.Documents;
 using LMLocal.Models;
 using Microsoft.VisualStudio.Shell;
 using Newtonsoft.Json;
@@ -119,9 +120,47 @@ namespace LMLocal.Infrastructure.WebView
                     return;
                 }
 
+                const int MaxDocuments = 5;
+                const int MaxDocumentBase64Chars = 14 * 1024 * 1024;
+                var documentText = new List<string>();
+                if (request.Documents != null)
+                {
+                    if (request.Documents.Count > MaxDocuments)
+                    {
+                        InternalLogger.Warn("ExecutePromptAsync: too many document attachments");
+                        return;
+                    }
+
+                    foreach (var document in request.Documents)
+                    {
+                        if (document == null || string.IsNullOrWhiteSpace(document.Name)
+                            || string.IsNullOrWhiteSpace(document.Data)
+                            || document.Data.Length > MaxDocumentBase64Chars)
+                        {
+                            InternalLogger.Warn("ExecutePromptAsync: invalid document attachment rejected");
+                            return;
+                        }
+
+                        try
+                        {
+                            var extracted = DocumentTextExtractor.Extract(document.Name, document.Data);
+                            documentText.Add("## Attached file: " + document.Name + "\\n" + (extracted ?? string.Empty));
+                        }
+                        catch (Exception documentError)
+                        {
+                            InternalLogger.Error("Failed to extract document: " + document.Name, documentError);
+                            documentText.Add("## Attached file: " + document.Name + "\\n[Unable to extract document text: " + documentError.Message + "]");
+                        }
+                    }
+                }
+
+                var prompt = request.Prompt ?? string.Empty;
+                if (documentText.Count > 0)
+                    prompt += "\\n\\n" + string.Join("\\n\\n", documentText);
+
                 var context = new GenerateStreamContext
                 {
-                    Prompt = request.Prompt,
+                    Prompt = prompt,
                     ActiveDocumentContent = request.IncludeContent ? await GetIncludedContentAsync() : null,
                     AdditionalPrompt = request.AdditionalPrompt,
                     ModelId = request.ModelId,
