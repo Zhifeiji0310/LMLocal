@@ -73,7 +73,7 @@ class AppManager {
         if ((!cleanText && !hasImages && !hasDocuments) || !appSelectors.canSend(appStore.getState().status)) return false;
 
         const documentNames = hasDocuments ? documents.map(d => d.name).join(', ') : '';
-        const prompt = documentNames ? (cleanText ? cleanText + '\\n\\n' : '') + 'Attached documents: ' + documentNames : cleanText;
+        const prompt = documentNames ? (cleanText ? cleanText + '\n\n' : '') + 'Attached documents: ' + documentNames : cleanText;
         await this.onUserMessagePending.emit(prompt, hasImages ? images.slice() : null);
 
         this._startPromptRound(this._buildPromptRequest(prompt, hasContent, hasImages ? images : null, hasDocuments ? documents : null));
