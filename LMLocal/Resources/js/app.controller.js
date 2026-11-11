@@ -146,7 +146,7 @@ class AppController {
         });
 
         inputComponent.onEnter.on(async (text, hasActiveContent, images, documents) => {
-            return await appManager.performSendMessage(text, hasActiveContent, images);
+            return await appManager.performSendMessage(text, hasActiveContent, images, documents);
         });
 
         appManager.onUserMessagePending.on((text, images) => {
