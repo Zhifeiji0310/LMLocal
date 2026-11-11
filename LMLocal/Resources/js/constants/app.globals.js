@@ -57,6 +57,7 @@ export const UIText = Object.freeze({
     FILES_PROCESSING: 'Files are still loading — please wait',
     FILES_TOO_LARGE: 'File exceeds size limit',
     FILES_UNSUPPORTED: 'Unsupported file type',
+    DOCUMENT_TOO_LARGE: 'Document exceeds 10 MB limit',
 
     // Providers dialog
     PROVIDERS_EMPTY_FILTERED: 'No providers match the current filter.',
@@ -94,6 +95,9 @@ export const Config = {
     // Drag-and-drop file upload
     DRAG_DROP_MAX_FILES: 10,
     DRAG_DROP_MAX_FILE_SIZE_BYTES: 200 * 1024,
+    DOCUMENT_MAX_FILE_SIZE_BYTES: 10 * 1024 * 1024,
+    DOCUMENT_ALLOWED_EXTENSIONS: ['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.pdf'],
+    DOCUMENT_MAX_COUNT: 5,
     DRAG_DROP_ALLOWED_EXTENSIONS: /\.(cs|json|js|ts|html|css|md|xml|txt|yaml|yml|py|java|cpp|c|h|sql|env|config|ini|log|sh|bat|ps1|rb|go|rs|php|vue|svelte|scss|less|jpg|jpeg|png)$/i,
 
     // Pasted images (multimodal chat)
