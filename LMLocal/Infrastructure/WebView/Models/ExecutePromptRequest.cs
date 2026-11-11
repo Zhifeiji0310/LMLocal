@@ -33,6 +33,9 @@ namespace LMLocal.Models
         /// Optional list of base64 image data URLs (data:image/...) attached to the user message as multimodal content.
         /// </summary>
         public List<string> Images { get; set; }
+
+        /// <summary>Office and PDF documents encoded as base64.</summary>
+        public List<DocumentAttachmentRequest> Documents { get; set; }
     }
 }
 
