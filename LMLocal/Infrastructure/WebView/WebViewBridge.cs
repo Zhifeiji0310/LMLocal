@@ -149,14 +149,14 @@ namespace LMLocal.Infrastructure.WebView
                         catch (Exception documentError)
                         {
                             InternalLogger.Error("Failed to extract document: " + document.Name, documentError);
-                            documentText.Add("## Attached file: " + document.Name + "\\n[Unable to extract document text: " + documentError.Message + "]");
+                            documentText.Add("## Attached file: " + document.Name + "\n[Unable to extract document text: " + documentError.Message + "]");
                         }
                     }
                 }
 
                 var prompt = request.Prompt ?? string.Empty;
                 if (documentText.Count > 0)
-                    prompt += "\n\n" + string.Join("\\n\\n", documentText);
+                    prompt += "\n\n" + string.Join("\n\n", documentText);
 
                 var context = new GenerateStreamContext
                 {
