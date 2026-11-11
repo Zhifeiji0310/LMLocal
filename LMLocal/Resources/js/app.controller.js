@@ -135,17 +135,17 @@ class AppController {
 
         themeComponent.setup();
 
-        inputComponent.onClick.on(async (text, hasActiveContent, images) => {
+        inputComponent.onClick.on(async (text, hasActiveContent, images, documents) => {
             const isGenerating = appSelectors.isBusy(appStore.getState().status);
             if (isGenerating) {
                 await appManager.performStop(text);
                 return false;
             }
 
-            return await appManager.performSendMessage(text, hasActiveContent, images);
+            return await appManager.performSendMessage(text, hasActiveContent, images, documents);
         });
 
-        inputComponent.onEnter.on(async (text, hasActiveContent, images) => {
+        inputComponent.onEnter.on(async (text, hasActiveContent, images, documents) => {
             return await appManager.performSendMessage(text, hasActiveContent, images);
         });
 
