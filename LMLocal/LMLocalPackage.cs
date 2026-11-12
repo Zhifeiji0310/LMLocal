@@ -2,6 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 using LMLocal.Commands;
+using LMLocal.Core.Common;
 using LMLocal.Infrastructure.DependencyInjection;
 using LMLocal.Infrastructure.Tooling.BuiltInVs.Common;
 using LMLocal.Infrastructure.Tooling.BuiltInVs.Snapshot;
@@ -54,6 +55,7 @@ namespace LMLocal
         /// </summary>
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {
+            InternalLogger.Info("LMLocal VSIX package initialization started. LogDirectory=" + InternalLogger.LogDirectory);
             // When initialized asynchronously, the current thread may be a background thread at this point.
             // Do any initialization that requires the UI thread after switching to the UI thread.
             await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
