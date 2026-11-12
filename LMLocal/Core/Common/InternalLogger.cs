@@ -61,7 +61,7 @@ namespace LMLocal.Core.Common
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("[LMLocal logger] " + ex);
+                System.Diagnostics.Debug.WriteLine("[LMLocal logger] " + ex);
             }
         }
     }
