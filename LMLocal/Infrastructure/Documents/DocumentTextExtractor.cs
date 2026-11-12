@@ -128,9 +128,9 @@ namespace LMLocal.Infrastructure.Documents
             }
             finally
             {
-                CloseComObject(document, () => document.Close(false));
+                CloseWordDocument(document);
                 ReleaseComObject(documents);
-                CloseComObject(application, () => application.Quit(false));
+                QuitOfficeApplication(application);
             }
         }
 
@@ -178,9 +178,9 @@ namespace LMLocal.Infrastructure.Documents
             }
             finally
             {
-                CloseComObject(workbook, () => workbook.Close(false));
+                CloseExcelWorkbook(workbook);
                 ReleaseComObject(workbooks);
-                CloseComObject(application, () => application.Quit());
+                QuitOfficeApplication(application);
             }
         }
 
@@ -298,9 +298,9 @@ namespace LMLocal.Infrastructure.Documents
             }
             finally
             {
-                CloseComObject(presentation, () => presentation.Close());
+                ClosePowerPointPresentation(presentation);
                 ReleaseComObject(presentations);
-                CloseComObject(application, () => application.Quit());
+                QuitOfficeApplication(application);
             }
         }
 
@@ -314,24 +314,40 @@ namespace LMLocal.Infrastructure.Documents
             return Activator.CreateInstance(officeType);
         }
 
-        private static void CloseComObject(object instance, Action close)
+        private static void CloseWordDocument(dynamic document)
         {
-            if (instance == null)
-                return;
+            if (document == null) return;
+            try { document.Close(false); }
+            catch { /* Best-effort COM cleanup. */ }
+            finally { ReleaseComObject(document); }
+        }
 
-            try
-            {
-                if (close != null)
-                    close();
-            }
+        private static void CloseExcelWorkbook(dynamic workbook)
+        {
+            if (workbook == null) return;
+            try { workbook.Close(false); }
+            catch { /* Best-effort COM cleanup. */ }
+            finally { ReleaseComObject(workbook); }
+        }
+
+        private static void ClosePowerPointPresentation(dynamic presentation)
+        {
+            if (presentation == null) return;
+            try { presentation.Close(); }
+            catch { /* Best-effort COM cleanup. */ }
+            finally { ReleaseComObject(presentation); }
+        }
+
+        private static void QuitOfficeApplication(dynamic application)
+        {
+            if (application == null) return;
+            try { application.Quit(false); }
             catch
             {
-                // Continue releasing COM objects even if closing the document fails.
+                try { application.Quit(); }
+                catch { /* Best-effort COM cleanup. */ }
             }
-            finally
-            {
-                ReleaseComObject(instance);
-            }
+            finally { ReleaseComObject(application); }
         }
 
         private static void ReleaseComObject(object instance)
