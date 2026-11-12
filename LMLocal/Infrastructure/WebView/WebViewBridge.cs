@@ -97,10 +97,19 @@ namespace LMLocal.Infrastructure.WebView
                 return;
             }
 
-            ExecutePromptRequest request = requestJson.FromJson<ExecutePromptRequest>();
-            if (request == null)
+            ExecutePromptRequest request;
+            try
             {
-                InternalLogger.Error("ExecutePromptAsync: deserialized request is null");
+                request = requestJson.FromJson<ExecutePromptRequest>();
+                if (request == null)
+                {
+                    InternalLogger.Error("ExecutePromptAsync: deserialized request is null");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Error("ExecutePromptAsync: failed to deserialize incoming request JSON.", ex);
                 return;
             }
 
