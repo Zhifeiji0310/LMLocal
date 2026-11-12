@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using LMLocal.Core.Common;
 
 namespace LMLocal.Infrastructure.Documents
 {
@@ -20,7 +21,11 @@ namespace LMLocal.Infrastructure.Documents
             if (string.IsNullOrWhiteSpace(fileName) || string.IsNullOrWhiteSpace(base64))
                 throw new ArgumentException("Document name and content are required.");
 
+            InternalLogger.Info("DocumentTextExtractor: decoding attachment. Name=" + fileName +
+                ", Base64Length=" + base64.Length);
             byte[] bytes = Convert.FromBase64String(base64);
+            InternalLogger.Info("DocumentTextExtractor: attachment decoded. Name=" + fileName +
+                ", SizeBytes=" + bytes.Length);
             if (bytes.Length == 0 || bytes.Length > MaxFileSizeBytes)
                 throw new InvalidDataException("Document is empty or exceeds the 10 MB limit.");
 
@@ -44,9 +49,20 @@ namespace LMLocal.Infrastructure.Documents
                 "LMLocal_" + Guid.NewGuid().ToString("N") + extension);
 
             File.WriteAllBytes(tempPath, bytes);
+            InternalLogger.Info("DocumentTextExtractor: temporary file created. Name=" + fileName +
+                ", Extension=" + extension + ", TempPath=" + tempPath);
             try
             {
-                return RunInSta(() => ExtractWithOffice(tempPath, extension));
+                string extracted = RunInSta(() => ExtractWithOffice(tempPath, extension));
+                InternalLogger.Info("DocumentTextExtractor: Office extraction returned. Name=" + fileName +
+                    ", TextLength=" + (extracted == null ? 0 : extracted.Length));
+                return extracted;
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Error("DocumentTextExtractor: extraction pipeline failed. Name=" + fileName +
+                    ", Extension=" + extension, ex);
+                throw;
             }
             finally
             {
@@ -81,11 +97,15 @@ namespace LMLocal.Infrastructure.Documents
 
             thread.IsBackground = true;
             thread.SetApartmentState(ApartmentState.STA);
+            InternalLogger.Info("DocumentTextExtractor: starting Office COM work on STA thread.");
             thread.Start();
             thread.Join();
 
             if (error != null)
+            {
+                InternalLogger.Error("DocumentTextExtractor: Office COM work failed on STA thread.", error);
                 throw new InvalidOperationException("Microsoft Office failed to extract the document text.", error);
+            }
 
             return result ?? string.Empty;
         }
@@ -306,12 +326,15 @@ namespace LMLocal.Infrastructure.Documents
 
         private static dynamic CreateOfficeApplication(string progId)
         {
+            InternalLogger.Info("DocumentTextExtractor: resolving Office COM application. ProgId=" + progId);
             Type officeType = Type.GetTypeFromProgID(progId);
             if (officeType == null)
                 throw new InvalidOperationException(
                     "Microsoft Office application is not registered: " + progId);
 
-            return Activator.CreateInstance(officeType);
+            var application = Activator.CreateInstance(officeType);
+            InternalLogger.Info("DocumentTextExtractor: Office COM application created. ProgId=" + progId);
+            return application;
         }
 
         private static void CloseWordDocument(dynamic document)
