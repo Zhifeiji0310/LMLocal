@@ -120,6 +120,11 @@ namespace LMLocal.Infrastructure.WebView
                     return;
                 }
 
+                InternalLogger.Info("ExecutePromptAsync: request received. PromptLength=" +
+                    (request.Prompt == null ? 0 : request.Prompt.Length) +
+                    ", ImageCount=" + (request.Images == null ? 0 : request.Images.Count) +
+                    ", DocumentCount=" + (request.Documents == null ? 0 : request.Documents.Count));
+
                 const int MaxDocuments = 5;
                 const int MaxDocumentBase64Chars = 14 * 1024 * 1024;
                 var documentText = new List<string>();
@@ -127,7 +132,7 @@ namespace LMLocal.Infrastructure.WebView
                 {
                     if (request.Documents.Count > MaxDocuments)
                     {
-                        InternalLogger.Warn("ExecutePromptAsync: too many document attachments");
+                        InternalLogger.Warn("ExecutePromptAsync: too many document attachments. Count=" + request.Documents.Count);
                         return;
                     }
 
@@ -137,18 +142,25 @@ namespace LMLocal.Infrastructure.WebView
                             || string.IsNullOrWhiteSpace(document.Data)
                             || document.Data.Length > MaxDocumentBase64Chars)
                         {
-                            InternalLogger.Warn("ExecutePromptAsync: invalid document attachment rejected");
+                            InternalLogger.Warn("ExecutePromptAsync: invalid document attachment rejected. Name=" +
+                                (document == null ? "<null>" : document.Name) +
+                                ", Base64Length=" + (document == null || document.Data == null ? 0 : document.Data.Length));
                             return;
                         }
 
+                        InternalLogger.Info("Document extraction started. Name=" + document.Name +
+                            ", MimeType=" + (document.MimeType ?? "<unknown>") +
+                            ", Base64Length=" + document.Data.Length);
                         try
                         {
                             var extracted = DocumentTextExtractor.Extract(document.Name, document.Data);
+                            InternalLogger.Info("Document extraction completed. Name=" + document.Name +
+                                ", ExtractedTextLength=" + (extracted == null ? 0 : extracted.Length));
                             documentText.Add("## Attached file: " + document.Name + "\n" + (extracted ?? string.Empty));
                         }
                         catch (Exception documentError)
                         {
-                            InternalLogger.Error("Failed to extract document: " + document.Name, documentError);
+                            InternalLogger.Error("Document extraction failed. Name=" + document.Name, documentError);
                             documentText.Add("## Attached file: " + document.Name + "\n[Unable to extract document text: " + documentError.Message + "]");
                         }
                     }
