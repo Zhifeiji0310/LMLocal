@@ -229,19 +229,28 @@ namespace LMLocal.Infrastructure.LlmApi
             {
                 request = new HttpRequestMessage(HttpMethod.Post, baseUrl + endpoint) { Content = content };
 
+                InternalLogger.Info("LLM streaming request started. Protocol=" +
+                    (useResponsesApi ? "Responses" : "ChatCompletions") +
+                    ", Model=" + (openAiRequest.Model ?? "<unknown>") +
+                    ", Url=" + GetSafeRequestUrl(request.RequestUri));
+
                 if (!string.IsNullOrEmpty(_settingsManager.UserAgent))
                     request.Headers.UserAgent.ParseAdd(_settingsManager.UserAgent);
                 if (!string.IsNullOrEmpty(apiKey))
                     request.Headers.Add("Authorization", $"Bearer {apiKey}");
 
                 response = await _httpClientWrapper.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                InternalLogger.Info("LLM streaming response received. StatusCode=" + (int)response.StatusCode +
+                    ", RequestId=" + GetRequestId(response));
 
                 if (!response.IsSuccessStatusCode)
                 {
                     var rawError = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                     var errorInfo = ApiErrorParser.ParseErrorBody(rawError);
                     errorInfo.Code = (int)response.StatusCode;
-                    InternalLogger.Warn($"SendChatStreamingAsync: API error: {errorInfo}");
+                    InternalLogger.Error("LLM streaming API returned an error. StatusCode=" +
+                        (int)response.StatusCode + ", RequestId=" + GetRequestId(response) +
+                        ", Error=" + errorInfo);
                     throw new ApiException(errorInfo, (int)response.StatusCode);
                 }
 
@@ -249,7 +258,14 @@ namespace LMLocal.Infrastructure.LlmApi
                 var streamingResponse = new StreamingResponse(stream, response, request, content);
 
                 success = true;
+                InternalLogger.Info("LLM streaming response stream opened successfully. RequestId=" + GetRequestId(response));
                 return streamingResponse;
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Error("LLM streaming request failed before stream processing. Url=" +
+                    GetSafeRequestUrl(request == null ? null : request.RequestUri), ex);
+                throw;
             }
             finally
             {
@@ -342,6 +358,31 @@ namespace LMLocal.Infrastructure.LlmApi
                     return null;
                 }
             }
+        }
+
+        private static string GetRequestId(HttpResponseMessage response)
+        {
+            if (response == null)
+                return "<none>";
+
+            string[] headerNames = { "x-request-id", "request-id", "openai-request-id", "cf-ray" };
+            foreach (string headerName in headerNames)
+            {
+                IEnumerable<string> values;
+                if (response.Headers.TryGetValues(headerName, out values))
+                    return string.Join(",", values);
+                if (response.Content != null && response.Content.Headers.TryGetValues(headerName, out values))
+                    return string.Join(",", values);
+            }
+
+            return "<not-provided>";
+        }
+
+        private static string GetSafeRequestUrl(Uri uri)
+        {
+            if (uri == null)
+                return "<unknown>";
+            return uri.GetLeftPart(UriPartial.Path);
         }
 
         private string ResolveBaseUrl(string explicitUrl)
